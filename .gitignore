@@ -1,0 +1,6 @@
+# Qt's compiled QML/JS caches, written next to the sources on the Toon and in toonsim
+*.qmlc
+*.jsc
+
+# the latest notification, written by the app at runtime
+event.json

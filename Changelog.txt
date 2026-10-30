@@ -1,0 +1,10 @@
+1.0.0
+- First version: the KNMI's weather codes for a place or the whole country, on a tile and a screen,
+  with a notification for a new warning and an icon in the systray
+- An own KNMI API key can be entered on the settings screen
+- The newest 5 KNMI files are read together
+- Weerlive.nl as second source, with an own key and a place: the highest code counts
+- A big icon on the tile when the screen is dimmed and a code applies
+- A big icon above the room temperature when the screen is dimmed and a code applies
+- What was read is kept in weercode_cache.json: after a restart nothing is downloaded again
+- A button Ververs on the screen: empties the cache and gets everything from the sources again
