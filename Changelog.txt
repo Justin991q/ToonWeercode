@@ -1,3 +1,7 @@
+1.0.1
+- The icon on the dimmed screen moved to the bottom right of the side panel: at the top it lay over
+  the burner icon
+
 1.0.0
 - First version: the KNMI's weather codes for a place or the whole country, on a tile and a screen,
   with a notification for a new warning and an icon in the systray

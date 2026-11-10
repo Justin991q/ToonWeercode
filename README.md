@@ -32,8 +32,8 @@ for anything that matters.
   cache and gets everything from the sources again.
 - **A notification (optional):** a box in the colour of the code in the middle of the screen for 15
   seconds, also when the screen is dimmed, once per warning. Tap it to close it sooner.
-- **On the dimmed screen,** while a code applies now: a big warning triangle on the tile and one above
-  the room temperature. The second one is also there without the tile.
+- **On the dimmed screen,** while a code applies now: a big warning triangle on the tile and one at the
+  bottom right of the thermostat's side panel. The second one is also there without the tile.
 - **An icon in the systray (optional):** a dot in the colour of the code, while a code applies.
 
 ## Screenshots
@@ -42,10 +42,10 @@ The tile on the home screen, with the dot in the systray:
 
 ![The Weercode tile with code geel and a yellow dot in the systray](screenshots/home.png)
 
-The dimmed screen, with the triangle on the tile and above the temperature, next to the icon of the
-waste calendar app:
+The dimmed screen, with the triangle on the tile and at the bottom right, clear of the burner icon and
+the icon of the waste calendar app:
 
-![The dimmed home screen with two orange warning triangles and a waste bin icon](screenshots/dimmed.png)
+![The dimmed home screen with two orange warning triangles, the burner icon and a waste bin icon](screenshots/dimmed.png)
 
 The screen with the warnings, and the settings screen:
 
@@ -185,9 +185,10 @@ The API keys are stored as plain text in the settings file.
   KNMI, as the app can't link the two. A Weerlive warning that lasts longer than 24 hours notifies again.
 - **Two notifications at once:** if another app that uses the same notification mechanism (such as P2000)
   shows one at the same moment, its box can stay until you tap it.
-- **The icon above the temperature** has a fixed position per screen size and assumes the current layout
-  of the home screen. The waste calendar app has its icon there through a firmware mod that only works
-  for that app. When it shows two kinds of waste, its icon can partly overlap this one.
+- **The icon in the side panel** has a fixed position per screen size and assumes the current layout of
+  the home screen. The top of the panel is taken by the burner icon and by the waste calendar's icon,
+  which it shows through a firmware mod that only works for that app. A very long text below the
+  temperature (3 lines or more) could reach the icon.
 
 ## Trying it in toonsim
 
