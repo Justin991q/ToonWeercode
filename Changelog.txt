@@ -1,3 +1,7 @@
+1.1.0
+- A web interface at http://<toon-ip>/weercode.html: the place, the switches and the API keys, with
+  how to get the keys, a key test and the current warnings
+
 1.0.1
 - The icon on the dimmed screen moved to the bottom right of the side panel: at the top it lay over
   the burner icon

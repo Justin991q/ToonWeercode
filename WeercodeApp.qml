@@ -2,10 +2,14 @@ import QtQuick 2.1
 import qb.components 1.0
 import qb.base 1.0;
 import FileIO 1.0
+import QtWebSockets 1.1
 
 // The weather warnings of the KNMI (dataset KNMI-public-weather-warnings) for one place, or for the
 // whole country when no place is chosen. Data: KNMI, CC BY 4.0. With a place and an own key also the
 // code of Weerlive.nl: the highest code of the two counts.
+// Web interface: http://<toon-ip>/weercode.html (served from /qmf/www) for the place, the switches and
+// the API keys. It talks to this app over a WebSocket on port 8138 (opened in /etc/default/iptables.conf;
+// on a real Toon that takes a reboot).
 App {
 	id: weercodeApp
 	property bool 		debugOutput : false
@@ -42,6 +46,10 @@ App {
 	property bool 		enableNotifications : true
 	property bool 		enableSystray : true
 	property int		notificationSeconds : 15
+	property int		webPort : 8138           // "webPort" in the settings file for another one
+	property string 	webPage : "weercode.html"
+	property string 	toonAddress : ""
+	property var 		wsClients : []
 
 	property int		checkInterval : 600000   // every 10 minutes; the list of files only, a file itself when it is new
 	property int		filesToRead : 5          // the newest files that are read together
@@ -92,6 +100,11 @@ App {
 		source: "file:///qmf/qml/apps/weercode/version.txt"
 	}
 
+	FileIO { id: pageSource; source: "file:///qmf/qml/apps/weercode/webeditor.html" }
+	FileIO { id: pageTarget; source: "file:///qmf/www/" + webPage }
+	FileIO { id: iptablesFile; source: "file:///etc/default/iptables.conf" }
+	FileIO { id: tcpFile; source: "file:///proc/net/tcp" }
+
 	signal weercodeUpdated()
 
 	function init() {
@@ -113,6 +126,7 @@ App {
 			apiKey = settings['apiKey'] || ""
 			weerliveKey = settings['weerliveKey'] || ""
 			notified = settings['notified'] || {}
+			if (settings['webPort'] > 0) webPort = settings['webPort']
 		} catch(e) {
 		}
 		try {
@@ -122,6 +136,11 @@ App {
 		cachedPlace = placeKey()
 		readCache()
 		Qt.callLater(showState)    // the last known state, until the first check has answered
+		wsServer.listen = true
+		publishWebPage()
+		openFirewallPort()
+		toonAddress = findToonAddress()
+		weercodeUpdated.connect(broadcastState)
 	}
 
 	function placeKey() {
@@ -163,7 +182,8 @@ App {
 			"enableSystray" : enableSystray ? "Yes" : "No",
 			"apiKey" : apiKey,
 			"weerliveKey" : weerliveKey,
-			"notified" : notified
+			"notified" : notified,
+			"webPort" : webPort
 		}))
 	}
 
@@ -196,6 +216,29 @@ App {
 		}
 		checkKnmi()
 		checkWeerlive()
+	}
+
+	function findPlaces(text, onDone) {
+		// the place register of the Dutch government, no key needed; onDone(places), null when it failed
+		var http = new XMLHttpRequest()
+		http.open("GET", "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?fq=type:woonplaats&rows=6&fl=woonplaatsnaam,provincienaam,centroide_ll&q=" + encodeURIComponent(text), true)
+		http.onreadystatechange = function() {
+			if (http.readyState !== 4) return
+			var places = null
+			try {
+				var docs = JSON.parse(http.responseText).response.docs
+				places = []
+				for (var i = 0; i < docs.length; i++) {
+					var point = docs[i].centroide_ll.match(/POINT\(([-\d.]+) ([-\d.]+)\)/)
+					if (point) places.push({name: docs[i].woonplaatsnaam, province: docs[i].provincienaam,
+											lon: parseFloat(point[1]), lat: parseFloat(point[2])})
+				}
+			} catch(e) {
+				places = null
+			}
+			onDone(places)
+		}
+		http.send()
 	}
 
 	function colorRank(color) {
@@ -566,6 +609,202 @@ App {
 		var when = first.onset > now ? "Vanaf " + timeText(first.onset) : (first.open ? "Nu" : "Tot " + timeText(first.expires))
 		var more = fresh.length > 1 ? " (+" + (fresh.length - 1) + " meer)" : ""
 		createScreenNotification("Code " + colorName(first.color) + ": " + first.phenomenon, when + more, first.color)
+	}
+
+	// ======================================================================
+	// web interface
+	// ======================================================================
+
+	function publishWebPage() {
+		try {
+			var page = pageSource.read()
+			if (!page) return
+			page = page.split("__WS_PORT__").join(String(webPort))
+			var old = ""
+			try { old = pageTarget.read() } catch(e) {}
+			if (old !== page) pageTarget.write(page)
+		} catch(e) {
+			console.log("Weercode: could not publish the web interface: " + e)
+		}
+	}
+
+	// the Toon's firewall lets only known ports in: add ours (active after a reboot)
+	function openFirewallPort() {
+		try {
+			var conf = iptablesFile.read()
+			if (!conf || conf.indexOf("--dport " + webPort + " ") >= 0) return
+			var rule = "-A HCB-INPUT -p tcp -m tcp --dport " + webPort + " --tcp-flags SYN,RST,ACK SYN -j ACCEPT\n"
+			var at = conf.indexOf("-A HCB-INPUT -p tcp -m tcp --tcp-flags SYN,RST,ACK SYN -j DROP")
+			if (at < 0) return
+			iptablesFile.write(conf.substring(0, at) + rule + conf.substring(at))
+			console.log("Weercode: port " + webPort + " added to iptables.conf (active after a reboot)")
+		} catch(e) {}
+	}
+
+	// the Toon's own IP address, from an established connection in /proc/net/tcp
+	function findToonAddress() {
+		try {
+			var lines = tcpFile.read().split("\n")
+			for (var i = 1; i < lines.length; i++) {
+				var fields = lines[i].trim().split(/\s+/)
+				if (fields.length < 4 || fields[3] !== "01") continue
+				var hex = fields[1].split(":")[0]
+				if (hex.length !== 8) continue
+				var ip = [parseInt(hex.substr(6, 2), 16), parseInt(hex.substr(4, 2), 16), parseInt(hex.substr(2, 2), 16), parseInt(hex.substr(0, 2), 16)]
+				if (ip[0] === 127 || ip[0] === 0) continue
+				return ip.join(".")
+			}
+		} catch(e) {}
+		return ""
+	}
+
+	function webInterfaceUrl() {
+		if (!toonAddress) toonAddress = findToonAddress()   // the network may have come up after the start
+		return "http://" + (toonAddress ? toonAddress : "<ip-van-toon>") + "/" + webPage
+	}
+
+	function keyInfo(key) {
+		// never the key itself: only its ends
+		return {set: key !== "", short: key.length > 12 ? key.slice(0, 4) + "..." + key.slice(-6) : (key ? "ingesteld" : "")}
+	}
+
+	function stateMessage() {
+		return JSON.stringify({
+			type: "state",
+			version: appVersion,
+			place: {name: placeName, lat: placeLat, lon: placeLon},
+			notifications: enableNotifications,
+			systray: enableSystray,
+			apiKey: keyInfo(apiKey),
+			weerliveKey: keyInfo(weerliveKey),
+			status: {known: dataKnown, code: codeColor, upcoming: upcomingColor, summary: summaryText, when: whenText,
+					 error: errorText, weerliveError: weerliveError, lastSuccess: lastSuccess, refreshing: refreshing},
+			warnings: warnings
+		})
+	}
+
+	function sendTo(socket, msg) {
+		try {
+			if (socket && socket.status === WebSocket.Open) { socket.sendTextMessage(msg); return true }
+		} catch(e) {}
+		return false
+	}
+
+	function broadcastState() {
+		if (wsClients.length === 0) return
+		var msg = stateMessage()
+		for (var i = 0; i < wsClients.length; i++) sendTo(wsClients[i], msg)
+	}
+
+	function dropClient(socket) {
+		var list = []
+		for (var i = 0; i < wsClients.length; i++) if (wsClients[i] !== socket) list.push(wsClients[i])
+		wsClients = list
+	}
+
+	function testKnmiKey(key, onDone) {
+		var http = new XMLHttpRequest()
+		http.open("GET", filesUrl + "?maxKeys=1", true)
+		http.setRequestHeader("Authorization", key)
+		http.onreadystatechange = function() {
+			if (http.readyState !== 4) return
+			if (http.status === 200) onDone(true, "De key werkt")
+			else if (http.status === 401 || http.status === 403) onDone(false, "Het KNMI weigert deze key: is het een key voor de Open Data API?")
+			else if (http.status === 429) onDone(false, "De key is goed, maar zit nu aan zijn limiet (429)")
+			else if (http.status === 0) onDone(false, "Geen verbinding met het KNMI")
+			else onDone(false, "Het KNMI geeft foutcode " + http.status)
+		}
+		http.send()
+	}
+
+	function testWeerliveKey(key, lat, lon, onDone) {
+		// without a place: a point in the middle of the country
+		if (!lat || !lon) { lat = 52.1; lon = 5.18 }
+		var http = new XMLHttpRequest()
+		http.open("GET", weerliveUrl + "?key=" + encodeURIComponent(key) + "&locatie=" + lat.toFixed(4) + "," + lon.toFixed(4), true)
+		http.onreadystatechange = function() {
+			if (http.readyState !== 4) return
+			if (http.status !== 200) {
+				onDone(false, http.status === 0 ? "Geen verbinding met Weerlive" : "Weerlive geeft foutcode " + http.status)
+				return
+			}
+			try {
+				var answer = JSON.parse(http.responseText)
+				var live = answer.liveweer[0]
+				if (live.fout) { onDone(false, "Weerlive: " + live.fout); return }
+				var rest = answer.api && answer.api[0] ? answer.api[0].rest_verz : undefined
+				onDone(true, "De key werkt" + (rest !== undefined ? " (nog " + rest + " verzoeken vandaag)" : ""))
+			} catch(e) {
+				onDone(false, "Geen geldig antwoord van Weerlive")
+			}
+		}
+		http.send()
+	}
+
+	function applyWebSettings(m) {
+		if (m.place) {
+			placeName = String(m.place.name || "")
+			placeLat = placeName ? Number(m.place.lat) || 0 : 0
+			placeLon = placeName ? Number(m.place.lon) || 0 : 0
+		}
+		if (m.notifications !== undefined) enableNotifications = m.notifications === true
+		if (m.systray !== undefined) enableSystray = m.systray === true
+		if (m.clearApiKey) apiKey = ""
+		else if (m.apiKey) apiKey = String(m.apiKey).replace(/\s/g, "")
+		if (m.clearWeerliveKey) weerliveKey = ""
+		else if (m.weerliveKey) weerliveKey = String(m.weerliveKey).replace(/\s/g, "")
+		if (weercodeConfigScreen) weercodeConfigScreen.firstShown = true   // it shows the new settings next time
+		saveSettings()
+	}
+
+	function handleMessage(socket, text) {
+		var m
+		try { m = JSON.parse(text) } catch(e) { return }
+		if (m.type === "get") {
+			sendTo(socket, stateMessage())
+		} else if (m.type === "save") {
+			applyWebSettings(m)
+			sendTo(socket, JSON.stringify({type: "saved"}))
+			broadcastState()
+		} else if (m.type === "test") {
+			var done = function(ok, message) { sendTo(socket, JSON.stringify({type: "test", kind: m.kind, ok: ok, message: message})) }
+			if (m.kind === "weerlive") {
+				var wkey = m.key || weerliveKey
+				if (!wkey) done(false, "Vul eerst een key in")
+				else testWeerliveKey(wkey, Number(m.lat) || placeLat, Number(m.lon) || placeLon, done)
+			} else {
+				var key = m.key || apiKey
+				if (!key) done(false, "Vul eerst een key in (zonder key gebruikt de app de openbare key)")
+				else testKnmiKey(key, done)
+			}
+		} else if (m.type === "search") {
+			findPlaces(String(m.text || ""), function(places) {
+				sendTo(socket, JSON.stringify({type: "places", ok: places !== null, places: places || []}))
+			})
+		} else if (m.type === "refresh") {
+			forceRefresh()
+		} else if (m.type === "testNotification") {
+			testScreenNotification()
+		}
+	}
+
+	WebSocketServer {
+		id: wsServer
+		host: "0.0.0.0"
+		port: webPort
+		listen: false             // switched on after the settings are read (they may give another port)
+		accept: true
+		onClientConnected: {
+			var socket = webSocket
+			var list = wsClients.slice(0)
+			list.push(socket)
+			wsClients = list
+			socket.onTextMessageReceived.connect(function(message) { handleMessage(socket, message) })
+			socket.onStatusChanged.connect(function() {
+				if (socket.status === WebSocket.Closed || socket.status === WebSocket.Error) dropClient(socket)
+			})
+		}
+		onErrorStringChanged: console.log("Weercode: web interface server: " + errorString)
 	}
 
 	function testScreenNotification() {

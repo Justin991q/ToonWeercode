@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weercode op Toon</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 1 22h22z' fill='%23ffd400' stroke='%23333' stroke-width='1'/%3E%3Cpath d='M11 9h2v7h-2zm0 9h2v2h-2z' fill='%23111'/%3E%3C/svg%3E">
+<style>
+:root {
+	--bg: #f3f5f8; --card: #ffffff; --text: #1d2430; --muted: #6b7584; --line: #e2e6ec;
+	--accent: #1f8ad4; --accent-soft: #e5f2fb; --ok: #2e9d4f; --err: #d0342c;
+	--yellow: #ffd400; --orange: #ff8c00; --red: #d7191c; --green: #4caf50;
+}
+@media (prefers-color-scheme: dark) {
+	:root { --bg: #14181e; --card: #1d232b; --text: #e6e9ee; --muted: #8e98a6; --line: #2c343e;
+		--accent: #4aa8ec; --accent-soft: #1d3346; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 18px; margin: 0; flex: 1; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--err); display: inline-block; flex: none; }
+.dot.on { background: var(--ok); }
+#status { color: var(--muted); font-size: 13px; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.card h2 { font-size: 16px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.wide { grid-column: 1 / -1; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); flex: 1; min-width: 220px; }
+input[type=text], input[type=password], input[type=search] {
+	font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; min-width: 0; }
+input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .45; cursor: default; }
+.msg { font-size: 13px; }
+.msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
+.muted { color: var(--muted); font-size: 13px; }
+.plate { display: inline-block; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 20px; background: var(--green); color: #000; }
+.plate.yellow { background: var(--yellow); } .plate.orange { background: var(--orange); } .plate.red { background: var(--red); color: #fff; }
+.plate.unknown { background: transparent; border: 2px solid var(--muted); color: var(--muted); }
+.warn { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.warn .bar { width: 8px; border-radius: 2px; flex: none; background: #9e9e9e; }
+.warn .bar.yellow { background: var(--yellow); } .warn .bar.orange { background: var(--orange); } .warn .bar.red { background: var(--red); }
+.warn b { display: block; }
+.places { border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; max-height: 210px; overflow-y: auto; }
+.places div { padding: 7px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.places div:last-child { border-bottom: none; }
+.places div:hover, .places div.sel { background: var(--accent-soft); }
+.keynow { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details ol { padding-left: 22px; margin: 8px 0; }
+details li { margin-bottom: 6px; }
+details p { margin: 8px 0; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+a { color: var(--accent); }
+.switch { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+#savebar { position: sticky; bottom: 0; grid-column: 1 / -1; display: none; justify-content: flex-end; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; box-shadow: 0 -2px 12px rgba(0,0,0,.08); }
+#savebar.show { display: flex; }
+@media (max-width: 860px) {
+	main { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+	<span class="dot" id="dot"></span>
+	<h1>Weercode op Toon</h1>
+	<span id="status">verbinden met Toon…</span>
+</header>
+
+<main>
+	<section class="card wide">
+		<h2>Nu</h2>
+		<div class="row">
+			<span class="plate unknown" id="plate">Onbekend</span>
+			<div style="flex:1;min-width:200px">
+				<div id="summary"></div>
+				<div class="muted" id="updated"></div>
+				<div class="msg err" id="errors"></div>
+			</div>
+			<button id="refreshBtn" title="Wist de cache en haalt alles opnieuw op bij KNMI en Weerlive">Ververs</button>
+		</div>
+		<div id="warnings"></div>
+	</section>
+
+	<section class="card">
+		<h2>Plaats</h2>
+		<div class="row">Waarschuwingen voor:&nbsp;<b id="placeNow"></b></div>
+		<div class="row">
+			<input type="search" id="search" placeholder="Zoek een woonplaats" style="flex:1;min-width:180px">
+			<button id="searchBtn">Zoek</button>
+			<button id="countryBtn">Heel Nederland</button>
+		</div>
+		<div class="muted" id="searchMsg"></div>
+		<div class="places" id="places" hidden></div>
+		<p class="muted">Met "Heel Nederland" telt de hoogste code in het hele land, ook als die ver weg is. Weerlive werkt alleen met een plaats.</p>
+	</section>
+
+	<section class="card">
+		<h2>Op de Toon</h2>
+		<label class="switch"><input type="checkbox" id="notifications"> Melding bij een nieuwe waarschuwing</label>
+		<label class="switch"><input type="checkbox" id="systray"> Icoon in de systray bij een code</label>
+		<div class="row"><button id="testNotifBtn">Testmelding op de Toon</button></div>
+	</section>
+
+	<section class="card">
+		<h2>KNMI Open Data API-key</h2>
+		<div class="row muted">Nu: <span class="keynow" id="apiKeyNow"></span></div>
+		<div class="row">
+			<label class="f">Nieuwe key
+				<input type="password" id="apiKey" placeholder="leeg laten = huidige houden" autocomplete="off" spellcheck="false">
+			</label>
+		</div>
+		<div class="row">
+			<button id="apiTestBtn">Test key</button>
+			<button id="apiClearBtn">Wis (openbare key gebruiken)</button>
+			<span class="msg" id="apiMsg"></span>
+		</div>
+		<p class="muted">Optioneel. Zonder eigen key gebruikt de app de openbare key van het KNMI. Die delen alle gebruikers zonder account, en hij zit daardoor vaak vol ("KNMI is even te druk"). Een eigen key mag 1000 verzoeken per uur doen.</p>
+		<details>
+			<summary>Hoe kom ik aan deze key?</summary>
+			<ol>
+				<li>Maak een account op het <a href="https://developer.dataplatform.knmi.nl/" target="_blank" rel="noopener">KNMI Developer Portal</a> met het registratieformulier. Gebruik een e-mailadres dat blijft werken. Het KNMI beoordeelt de aanvraag en antwoordt binnen 2 werkdagen.<br>
+					<span class="muted">Werkt het formulier niet? Mail dan naar <code>opendata@knmi.nl</code> met als onderwerp <code>Developer account registration</code>, en vermeld je naam en waarvoor je het gebruikt (bijvoorbeeld "weerwaarschuwingen op mijn thermostaat").</span></li>
+				<li>Log in op het Developer Portal.</li>
+				<li>Ga naar de <a href="https://developer.dataplatform.knmi.nl/apis" target="_blank" rel="noopener">API Catalogue</a> en klik bij <b>Open Data API</b> op <b>Request an API key</b>.</li>
+				<li>De key staat daarna op het scherm. Kopieer hem meteen: het is een lange reeks letters en cijfers, die meestal begint met <code>eyJ</code>.</li>
+				<li>Plak hem hierboven, klik op <b>Test key</b> en daarna op <b>Opslaan op Toon</b>.</li>
+			</ol>
+			<p>Let op: het moet een key voor de <b>Open Data API</b> zijn. Keys voor EDR, WMS of de Notification Service werken hier niet. Plak alleen de key zelf, zonder <code>Bearer</code> ervoor.</p>
+		</details>
+	</section>
+
+	<section class="card">
+		<h2>Weerlive API-key</h2>
+		<div class="row muted">Nu: <span class="keynow" id="weerliveKeyNow"></span></div>
+		<div class="row">
+			<label class="f">Nieuwe key
+				<input type="password" id="weerliveKey" placeholder="leeg laten = huidige houden" autocomplete="off" spellcheck="false">
+			</label>
+		</div>
+		<div class="row">
+			<button id="wlTestBtn">Test key</button>
+			<button id="wlClearBtn">Wis (Weerlive niet gebruiken)</button>
+			<span class="msg" id="wlMsg"></span>
+		</div>
+		<p class="muted">Optioneel, en alleen met een gekozen plaats. Weerlive is een tweede bron naast het KNMI: de hoogste code van de twee telt. De app vraagt elke 10 minuten iets op, dat zijn 144 van de 300 verzoeken die Weerlive per dag toestaat. Een test kost er ook één.</p>
+		<details>
+			<summary>Hoe kom ik aan deze key?</summary>
+			<ol>
+				<li>Ga naar <a href="https://weerlive.nl/api/toegang/index.php" target="_blank" rel="noopener">weerlive.nl/api/toegang</a> ("Genereer je API-key") en vul het formulier in. Heb je al een account, log daar dan in om je key op te vragen.</li>
+				<li>Kopieer de key die je krijgt.</li>
+				<li>Plak hem hierboven, klik op <b>Test key</b> en daarna op <b>Opslaan op Toon</b>.</li>
+			</ol>
+			<p>De key is gratis en bedoeld voor privégebruik. Weerlive vraagt om een bronvermelding; de app noemt Weerlive.nl op zijn schermen. De demo-key van Weerlive werkt alleen met één plaatsnaam en is hier niet te gebruiken. Meer uitleg staat op <a href="https://weerlive.nl/delen.php" target="_blank" rel="noopener">weerlive.nl/delen.php</a>.</p>
+		</details>
+	</section>
+
+	<div id="savebar">
+		<span class="msg">Niet opgeslagen wijzigingen</span>
+		<button id="undoBtn">Ongedaan maken</button>
+		<button id="saveBtn" class="primary">Opslaan op Toon</button>
+	</div>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const WS_PORT = /^\d+$/.test("__WS_PORT__") ? "__WS_PORT__" : "8138";   // the app fills in its port when it publishes the page
+const wsUrl = params.get("ws") || ("ws://" + (location.hostname || "127.0.0.1") + ":" + WS_PORT);
+const colorName = {yellow: "geel", orange: "oranje", red: "rood"};
+
+let ws = null;
+let server = null;          // the Toon's last state message
+let edit = null;            // working copy of what can be saved
+let dirty = false;
+
+function connect() {
+	ws = new WebSocket(wsUrl);
+	ws.onopen = () => { setStatus("verbonden met Toon", true); send({type: "get"}); };
+	ws.onclose = () => { setStatus("geen verbinding met Toon, opnieuw proberen…", false); setTimeout(connect, 3000); };
+	ws.onerror = () => {};
+	ws.onmessage = (ev) => {
+		let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+		if (m.type === "state") onState(m);
+		else if (m.type === "test") setMsg(m.kind === "weerlive" ? "wlMsg" : "apiMsg", m.message, m.ok);
+		else if (m.type === "places") showPlaces(m);
+		else if (m.type === "saved") { dirty = false; updateSavebar(); $("apiKey").value = ""; $("weerliveKey").value = ""; setStatus("opgeslagen op Toon", true); }
+	};
+}
+function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+function setStatus(text, ok) {
+	$("status").textContent = text;
+	if (ok !== undefined) $("dot").classList.toggle("on", ok);
+}
+function setMsg(id, text, ok) {
+	const el = $(id);
+	el.textContent = text;
+	el.className = "msg " + (ok === undefined ? "" : (ok ? "ok" : "err"));
+}
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+
+function fromServer(m) {
+	return {place: {name: m.place.name, lat: m.place.lat, lon: m.place.lon}, notifications: m.notifications, systray: m.systray,
+		clearApiKey: false, clearWeerliveKey: false};
+}
+
+function onState(m) {
+	server = m;
+	setStatus("verbonden met Toon" + (m.version ? " · app " + m.version : ""), true);
+	if (!dirty) edit = fromServer(m);
+	renderStatus();
+	renderSettings();
+}
+
+function renderStatus() {
+	const s = server.status;
+	const plate = $("plate");
+	plate.className = "plate " + (!s.known ? "unknown" : (s.code || ""));
+	plate.textContent = !s.known ? "Onbekend" : (s.code ? "Code " + colorName[s.code] : "Geen waarschuwing");
+	let summary = "";
+	if (s.known && s.code) summary = s.summary + (s.when ? " · " + s.when : "");
+	else if (s.known && s.upcoming) summary = "Verwacht: code " + colorName[s.upcoming] + " · " + s.summary + (s.when ? " · " + s.when.toLowerCase() : "");
+	$("summary").textContent = summary;
+	$("updated").textContent = s.refreshing ? "Gegevens ophalen…" : (s.lastSuccess ? "KNMI bijgewerkt: " + new Date(s.lastSuccess).toLocaleString("nl-NL") : "");
+	$("errors").textContent = [s.error, s.weerliveError].filter(x => x).join(" · ");
+	$("refreshBtn").disabled = s.refreshing;
+	$("refreshBtn").textContent = s.refreshing ? "Bezig…" : "Ververs";
+	$("warnings").innerHTML = server.warnings.map(w => `<div class="warn"><span class="bar ${esc(w.color)}"></span><div>
+		<b>${esc(w.title)}: ${esc(w.phenomenon)}</b><span class="muted">${esc(w.when)} · ${esc(w.area)}</span><div>${esc(w.headline)}</div></div></div>`).join("");
+}
+
+function renderSettings() {
+	$("placeNow").textContent = edit.place.name || "heel Nederland";
+	$("notifications").checked = edit.notifications;
+	$("systray").checked = edit.systray;
+	$("apiKeyNow").textContent = edit.clearApiKey ? "wordt gewist (openbare key)" : (server.apiKey.set ? server.apiKey.short : "geen eigen key (openbare key)");
+	$("weerliveKeyNow").textContent = edit.clearWeerliveKey ? "wordt gewist" : (server.weerliveKey.set ? server.weerliveKey.short : "geen key");
+}
+
+function markDirty() { dirty = true; updateSavebar(); renderSettings(); }
+function updateSavebar() { $("savebar").classList.toggle("show", dirty); }
+
+function showPlaces(m) {
+	const list = $("places");
+	if (!m.ok) { setMsg("searchMsg", "Zoeken lukt nu niet", false); list.hidden = true; return; }
+	setMsg("searchMsg", m.places.length ? "Kies een plaats:" : "Geen plaats gevonden");
+	list.hidden = !m.places.length;
+	list.innerHTML = m.places.map((p, i) => `<div data-i="${i}">${esc(p.name)} <span class="muted">(${esc(p.province)})</span></div>`).join("");
+	list.onclick = (ev) => {
+		const row = ev.target.closest("[data-i]");
+		if (!row) return;
+		const p = m.places[+row.dataset.i];
+		edit.place = {name: p.name, lat: p.lat, lon: p.lon};
+		[...list.children].forEach(c => c.classList.toggle("sel", c === row));
+		markDirty();
+	};
+}
+
+$("searchBtn").onclick = () => { const q = $("search").value.trim(); if (!q) return; setMsg("searchMsg", "zoeken…"); send({type: "search", text: q}); };
+$("search").addEventListener("keydown", (ev) => { if (ev.key === "Enter") $("searchBtn").click(); });
+$("countryBtn").onclick = () => { edit.place = {name: "", lat: 0, lon: 0}; $("places").hidden = true; markDirty(); };
+$("notifications").addEventListener("change", () => { edit.notifications = $("notifications").checked; markDirty(); });
+$("systray").addEventListener("change", () => { edit.systray = $("systray").checked; markDirty(); });
+$("apiKey").addEventListener("input", () => { edit.clearApiKey = false; markDirty(); });
+$("weerliveKey").addEventListener("input", () => { edit.clearWeerliveKey = false; markDirty(); });
+$("apiClearBtn").onclick = () => { $("apiKey").value = ""; edit.clearApiKey = true; markDirty(); };
+$("wlClearBtn").onclick = () => { $("weerliveKey").value = ""; edit.clearWeerliveKey = true; markDirty(); };
+$("apiTestBtn").onclick = () => { setMsg("apiMsg", "testen…"); send({type: "test", kind: "knmi", key: $("apiKey").value.trim()}); };
+$("wlTestBtn").onclick = () => {
+	setMsg("wlMsg", "testen…");
+	send({type: "test", kind: "weerlive", key: $("weerliveKey").value.trim(), lat: edit.place.lat, lon: edit.place.lon});
+};
+$("testNotifBtn").onclick = () => send({type: "testNotification"});
+$("refreshBtn").onclick = () => send({type: "refresh"});
+$("saveBtn").onclick = () => send({type: "save", place: edit.place, notifications: edit.notifications, systray: edit.systray,
+	apiKey: $("apiKey").value.trim(), weerliveKey: $("weerliveKey").value.trim(),
+	clearApiKey: edit.clearApiKey, clearWeerliveKey: edit.clearWeerliveKey});
+$("undoBtn").onclick = () => { dirty = false; $("apiKey").value = ""; $("weerliveKey").value = ""; $("places").hidden = true; updateSavebar(); onState(server); };
+window.addEventListener("beforeunload", (ev) => { if (dirty) { ev.preventDefault(); ev.returnValue = ""; } });
+
+connect();
+</script>
+</body>
+</html>

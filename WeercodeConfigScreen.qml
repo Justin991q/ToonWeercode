@@ -19,6 +19,7 @@ Screen {
 
 	onShown: {
 		addCustomTopRightButton("Opslaan")
+		webText.webUrl = app.webInterfaceUrl()
 		if (firstShown) {
 			tempPlaceName = app.placeName
 			tempPlaceLat = app.placeLat
@@ -70,27 +71,12 @@ Screen {
 		var search = searchCount
 		if (!text) return
 		searchStatus = "Zoeken..."
-		// the place register of the Dutch government, no key needed
-		var http = new XMLHttpRequest()
-		http.open("GET", "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?fq=type:woonplaats&rows=6&fl=woonplaatsnaam,provincienaam,centroide_ll&q=" + encodeURIComponent(text), true)
-		http.onreadystatechange = function() {
-			if (http.readyState !== 4 || search !== searchCount) return
-			searchStatus = "Zoeken lukt nu niet"
-			if (http.status !== 200) return
-			var docs
-			try {
-				docs = JSON.parse(http.responseText).response.docs
-			} catch(e) {
-				return
-			}
-			searchStatus = docs.length === 0 ? "Geen plaats gevonden" : ""
-			for (var i = 0; i < docs.length; i++) {
-				var point = docs[i].centroide_ll.match(/POINT\(([-\d.]+) ([-\d.]+)\)/)
-				if (point) placesModel.append({name: docs[i].woonplaatsnaam, province: docs[i].provincienaam,
-											   lon: parseFloat(point[1]), lat: parseFloat(point[2])})
-			}
-		}
-		http.send()
+		app.findPlaces(text, function(places) {
+			if (search !== searchCount) return
+			if (places === null) { searchStatus = "Zoeken lukt nu niet"; return }
+			searchStatus = places.length === 0 ? "Geen plaats gevonden" : ""
+			for (var i = 0; i < places.length; i++) placesModel.append(places[i])
+		})
 	}
 
 	Text {
@@ -190,6 +176,7 @@ Screen {
 	}
 
 	NewTextLabel {
+		id: countryButton
 		width: placesContainer.width
 		height: isNxt ? 40:32
 		buttonActiveColor: "lightgrey"
@@ -206,6 +193,22 @@ Screen {
 			tempPlaceName = ""
 			tempPlaceLat = 0
 			tempPlaceLon = 0
+		}
+	}
+
+	Text {
+		id: webText
+		width: placesContainer.width
+		wrapMode: Text.WrapAnywhere
+		text: "Keys en instellingen ook via de webinterface:\n" + webUrl
+		property string webUrl: ""
+		font.pixelSize: isNxt ? 15:12
+		font.family: qfont.regular.name
+		color: "grey"
+		anchors {
+			top: countryButton.bottom
+			left: chosenText.left
+			topMargin: isNxt ? 12:10
 		}
 	}
 

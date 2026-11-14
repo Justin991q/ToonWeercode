@@ -111,7 +111,25 @@ Tap the tile, then **Instellingen** at the top right. Changes count after **Opsl
 3. **Icoon in systray bij een code:** the dot on or off.
 4. **API-key** and **Weerlive:** your keys, see below. **Wis** empties a field.
 
-The settings screen shows the app's version at the bottom.
+The settings screen shows the app's version at the bottom, and the address of the web interface.
+
+## Web interface
+
+All settings can also be made from a browser on your phone or PC, which is easier for the long API keys:
+
+```
+http://<ip-van-toon>/weercode.html
+```
+
+It shows the current code and warnings, with **Ververs**, and lets you choose the place, the switches and
+both API keys. **Test key** checks a key with KNMI or Weerlive before you save it, and **Hoe kom ik aan
+deze key?** explains step by step how to request one. Changes count after **Opslaan op Toon**.
+
+The page talks to the app over a WebSocket on port **8138** (another port: `webPort` in the settings
+file). The app adds that port to the Toon's firewall (`/etc/default/iptables.conf`), but on a real Toon
+that rule only works **after a reboot**: until then the page says "geen verbinding met Toon". The app
+never sends your keys to the page, only their first and last characters. Anyone on your home network
+who opens the page can change the settings, just like with the Home Assistant app's web editor.
 
 ## Which API keys
 
@@ -124,8 +142,9 @@ The settings screen shows the app's version at the bottom.
 1 August 2027. It is often at its limit, and the app then shows "KNMI is even te druk". Your own key has
 its own limit of 1000 requests an hour.
 
-**Typing a long key on the Toon's keyboard** is a lot of work. You can also put it in the settings file
-as `apiKey` or `weerliveKey` (see [Files](#files)), and then restart the screen software.
+**Typing a long key on the Toon's keyboard** is a lot of work: use the [web interface](#web-interface)
+instead. You can also put it in the settings file as `apiKey` or `weerliveKey` (see [Files](#files)), and
+then restart the screen software.
 
 ## Where the data comes from
 
@@ -165,6 +184,7 @@ and 1 Weerlive request. Warnings that have already notified don't notify again.
 | "KNMI weigert de sleutel" | Check your key: it must be for the **Open Data API**. Without your own key, the public key may have expired. |
 | "Geen verbinding met het KNMI" | The Toon has no internet, or the answer couldn't be read, for example because KNMI changed its format. |
 | "Weerlive weigert de key of plaats" | Check your Weerlive key. Weerlive's demo key only works for one place, and isn't usable here. |
+| The web interface says "geen verbinding met Toon" | On a real Toon the firewall rule for port 8138 only works after a reboot. Is the app running? |
 | "Onbekend" stays | No source has answered for 30 minutes: see the line below it on the tile. |
 | No notification | Does **Test melding** show one? Is **Melding bij nieuwe waarschuwing** on? Each warning notifies once, also across restarts. |
 
@@ -176,6 +196,8 @@ and 1 Weerlive request. Warnings that have already notified don't notify again.
 | `/mnt/data/tsc/weercode_userSettings.json` | the place, the switches, the API keys and which warnings have notified |
 | `/mnt/data/tsc/weercode_cache.json` | the cache |
 | `/qmf/qml/apps/weercode/event.json` | the latest notification's text, written by the app |
+| `/qmf/www/weercode.html` | the web interface, written by the app from `webeditor.html` at every start |
+| `/etc/default/iptables.conf` | the firewall rule for port 8138, added by the app |
 
 The API keys are stored as plain text in the settings file.
 
@@ -198,8 +220,9 @@ The app has no automated tests yet.
 
 ## Removing
 
-Delete the folder `/qmf/qml/apps/weercode`, `/mnt/data/tsc/weercode_userSettings.json` and
-`/mnt/data/tsc/weercode_cache.json`, then restart the screen software.
+Delete the folder `/qmf/qml/apps/weercode`, `/mnt/data/tsc/weercode_userSettings.json`,
+`/mnt/data/tsc/weercode_cache.json` and `/qmf/www/weercode.html`, then restart the screen software.
+The line with `--dport 8138` in `/etc/default/iptables.conf` can go too.
 
 ## Credits
 
