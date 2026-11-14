@@ -197,18 +197,54 @@ Screen {
 	}
 
 	Text {
-		id: webText
-		width: placesContainer.width
-		wrapMode: Text.WrapAnywhere
-		text: "Keys en instellingen ook via de webinterface:\n" + webUrl
-		property string webUrl: ""
+		id: webTitle
+		width: placesContainer.width - qrFrame.width - (qrFrame.visible ? (isNxt ? 12:10) : 0)
+		wrapMode: Text.WordWrap
+		text: "Keys makkelijker invullen via de webinterface. Scan de code met je telefoon of typ het adres:"
 		font.pixelSize: isNxt ? 15:12
-		font.family: qfont.regular.name
-		color: "grey"
+		font.family: qfont.semiBold.name
 		anchors {
 			top: countryButton.bottom
 			left: chosenText.left
 			topMargin: isNxt ? 12:10
+		}
+	}
+
+	Text {
+		id: webText
+		width: webTitle.width
+		wrapMode: Text.Wrap
+		text: webUrl.replace(/\/([^\/]*)$/, "/\u200b$1")   // wrap after the last "/" rather than inside the page name
+		property string webUrl: ""
+		font.pixelSize: isNxt ? 18:14
+		font.family: qfont.bold.name
+		color: app.toonAddress ? "#4a90e2" : "grey"
+		anchors {
+			top: webTitle.bottom
+			left: chosenText.left
+			topMargin: isNxt ? 6:5
+		}
+	}
+
+	// the web interface's address as a QR code: scan it with a phone, no typing
+	Rectangle {
+		id: qrFrame
+		visible: app.toonAddress !== ""
+		width: visible ? qr.width + 12 : 0
+		height: qr.height + 12
+		radius: 4
+		color: "#ffffff"
+		anchors {
+			top: webTitle.top
+			right: placesContainer.right
+		}
+		QrCode {
+			id: qr
+			anchors.centerIn: parent
+			height: isNxt ? 110 : 88
+			width: height * designElements.pixelAspectRatio
+			content: webText.webUrl
+			color: "#000000"
 		}
 	}
 

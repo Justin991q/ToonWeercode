@@ -104,6 +104,7 @@ App {
 	FileIO { id: pageTarget; source: "file:///qmf/www/" + webPage }
 	FileIO { id: iptablesFile; source: "file:///etc/default/iptables.conf" }
 	FileIO { id: tcpFile; source: "file:///proc/net/tcp" }
+	FileIO { id: fibFile; source: "file:///proc/net/fib_trie" }
 
 	signal weercodeUpdated()
 
@@ -641,8 +642,17 @@ App {
 		} catch(e) {}
 	}
 
-	// the Toon's own IP address, from an established connection in /proc/net/tcp
+	// the Toon's own IP address: its local address in /proc/net/fib_trie, else an established connection in /proc/net/tcp
 	function findToonAddress() {
+		try {
+			// "|-- 192.168.1.23" followed by "/32 host LOCAL"
+			var fib = fibFile.read().split("\n")
+			for (var f = 1; f < fib.length; f++) {
+				if (fib[f].indexOf("/32 host LOCAL") < 0) continue
+				var m = fib[f - 1].match(/(\d+)\.(\d+)\.(\d+)\.(\d+)\s*$/)
+				if (m && m[1] !== "127" && m[1] !== "0") return m[1] + "." + m[2] + "." + m[3] + "." + m[4]
+			}
+		} catch(e1) {}
 		try {
 			var lines = tcpFile.read().split("\n")
 			for (var i = 1; i < lines.length; i++) {

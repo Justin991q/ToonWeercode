@@ -1,3 +1,8 @@
+1.2.0
+- The settings screen shows the web interface's full address with the Toon's IP address, and a QR
+  code of it to open the web interface with a phone
+- The Toon's IP address is found more reliably, also when it has no open connection
+
 1.1.1
 - The web interface says what to do without a connection: "Flush firewall rules" in the TSC settings,
   or a reboot

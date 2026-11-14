@@ -111,7 +111,8 @@ Tap the tile, then **Instellingen** at the top right. Changes count after **Opsl
 3. **Icoon in systray bij een code:** the dot on or off.
 4. **API-key** and **Weerlive:** your keys, see below. **Wis** empties a field.
 
-The settings screen shows the app's version at the bottom, and the address of the web interface.
+The settings screen shows the app's version at the bottom, and the full address of the web interface
+with the Toon's IP address, plus a QR code of it: scan that with your phone to open the web interface.
 
 ## Web interface
 
