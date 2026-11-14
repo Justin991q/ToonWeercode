@@ -236,7 +236,7 @@ function renderStatus() {
 	$("refreshBtn").disabled = s.refreshing;
 	$("refreshBtn").textContent = s.refreshing ? "Bezig…" : "Ververs";
 	$("warnings").innerHTML = server.warnings.map(w => `<div class="warn"><span class="bar ${esc(w.color)}"></span><div>
-		<b>${esc(w.title)}: ${esc(w.phenomenon)}</b><span class="muted">${esc(w.when)} · ${esc(w.area)}</span><div>${esc(w.headline)}</div></div></div>`).join("");
+		<b>${esc(w.title)}: ${esc(w.phenomenon)}</b><span class="muted">${[w.when, "Bron: " + w.source, w.area].filter(Boolean).map(esc).join(" · ")}</span><div>${esc(w.headline)}</div></div></div>`).join("");
 }
 
 function renderSettings() {

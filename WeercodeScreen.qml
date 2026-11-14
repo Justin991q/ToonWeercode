@@ -100,7 +100,7 @@ Screen {
 				Text {
 					width: parent.width
 					elide: Text.ElideRight
-					text: model.when + "  -  " + model.area
+					text: [model.when, "Bron: " + model.source, model.area].filter(function(t) { return t }).join("  -  ")
 					font.pixelSize: isNxt? 16:12
 					font.family: qfont.regular.name
 					color: "#606060"

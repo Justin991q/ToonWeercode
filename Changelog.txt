@@ -1,3 +1,7 @@
+1.2.1
+- Every warning on the screen and on the web interface says where it comes from: "Bron: KNMI" or
+  "Bron: Weerlive"
+
 1.2.0
 - The settings screen shows the web interface's full address with the Toon's IP address, and a QR
   code of it to open the web interface with a phone

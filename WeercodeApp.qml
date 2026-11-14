@@ -506,7 +506,7 @@ App {
 	function weerlivePart(color, onset, now) {
 		// it has no end time: open, and until when a notification counts as seen
 		return {id: "weerlive", key: "weerlive|" + color, isWarning: true, open: true, color: color, phenomenon: weerliveData.title,
-				headline: weerliveData.text, area: "Bron: Weerlive", onset: onset, expires: now + 24 * 3600000}
+				headline: weerliveData.text, area: "", onset: onset, expires: now + 24 * 3600000}
 	}
 
 	function highestRank(list) {
@@ -581,7 +581,7 @@ App {
 
 	function screenItem(part, title, when) {
 		return {title: title, when: when, phenomenon: part.phenomenon, color: part.isWarning ? part.color : "",
-				headline: part.headline, area: part.area}
+				headline: part.headline, area: part.area, source: part.id === "weerlive" ? "Weerlive" : "KNMI"}
 	}
 
 	function notifyNew(list) {

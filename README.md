@@ -27,7 +27,7 @@ for anything that matters.
   one is coming, it says so ("Verwacht: code oranje"). When the app doesn't know the current state, it
   says "Onbekend" and never "Geen waarschuwing".
 - **A screen** (tap the tile) with all warnings for your place, most important first: the code, the
-  times, the area and KNMI's text. "Mogelijk gevaarlijk weer" is listed separately: KNMI doesn't count
+  times, the source (KNMI or Weerlive), the area and the text. "Mogelijk gevaarlijk weer" is listed separately: KNMI doesn't count
   that as a warning yet, so it doesn't set the code and gives no notification. **Ververs** empties the
   cache and gets everything from the sources again.
 - **A notification (optional):** a box in the colour of the code in the middle of the screen for 15
