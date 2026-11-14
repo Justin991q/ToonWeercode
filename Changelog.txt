@@ -1,3 +1,7 @@
+1.1.1
+- The web interface says what to do without a connection: "Flush firewall rules" in the TSC settings,
+  or a reboot
+
 1.1.0
 - A web interface at http://<toon-ip>/weercode.html: the place, the switches and the API keys, with
   how to get the keys, a key test and the current warnings

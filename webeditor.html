@@ -184,7 +184,10 @@ let dirty = false;
 function connect() {
 	ws = new WebSocket(wsUrl);
 	ws.onopen = () => { setStatus("verbonden met Toon", true); send({type: "get"}); };
-	ws.onclose = () => { setStatus("geen verbinding met Toon, opnieuw proberen…", false); setTimeout(connect, 3000); };
+	ws.onclose = () => {
+		setStatus("geen verbinding met Toon, opnieuw proberen… Lukt het niet: tik op de Toon in de TSC-instellingen op \"Flush firewall rules\", of herstart de Toon.", false);
+		setTimeout(connect, 3000);
+	};
 	ws.onerror = () => {};
 	ws.onmessage = (ev) => {
 		let m; try { m = JSON.parse(ev.data); } catch (e) { return; }

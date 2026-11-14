@@ -127,7 +127,9 @@ deze key?** explains step by step how to request one. Changes count after **Opsl
 
 The page talks to the app over a WebSocket on port **8138** (another port: `webPort` in the settings
 file). The app adds that port to the Toon's firewall (`/etc/default/iptables.conf`), but on a real Toon
-that rule only works **after a reboot**: until then the page says "geen verbinding met Toon". The app
+that rule only works **after a reboot**: until then the page says "geen verbinding met Toon". Without a
+reboot: on the Toon, tap **Flush firewall rules** in the TSC settings. That removes all firewall rules
+until the next reboot, which loads them again, this one included. The app
 never sends your keys to the page, only their first and last characters. Anyone on your home network
 who opens the page can change the settings, just like with the Home Assistant app's web editor.
 
@@ -184,7 +186,7 @@ and 1 Weerlive request. Warnings that have already notified don't notify again.
 | "KNMI weigert de sleutel" | Check your key: it must be for the **Open Data API**. Without your own key, the public key may have expired. |
 | "Geen verbinding met het KNMI" | The Toon has no internet, or the answer couldn't be read, for example because KNMI changed its format. |
 | "Weerlive weigert de key of plaats" | Check your Weerlive key. Weerlive's demo key only works for one place, and isn't usable here. |
-| The web interface says "geen verbinding met Toon" | On a real Toon the firewall rule for port 8138 only works after a reboot. Is the app running? |
+| The web interface says "geen verbinding met Toon" | On a real Toon the firewall rule for port 8138 only works after a reboot: reboot the Toon, or tap **Flush firewall rules** in the TSC settings on the Toon. Is the app running? |
 | "Onbekend" stays | No source has answered for 30 minutes: see the line below it on the tile. |
 | No notification | Does **Test melding** show one? Is **Melding bij nieuwe waarschuwing** on? Each warning notifies once, also across restarts. |
 
